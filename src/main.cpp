@@ -7,6 +7,10 @@
 #define ESPNOW_CHANNEL 1
 #endif
 
+static const char* PMK = "0123456789ABCDEF0123456789ABCDEF"; // 32 chars
+uint8_t LMK[16]        = { 0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,
+                           0x90,0xA0,0xB0,0xC0,0xD0,0xE0,0xF0,0x00 };
+
 // Receiver's STA MAC (from your print)
 uint8_t RECEIVER_MAC[6] = { 0xAC,0x67,0xB2,0x59,0x54,0x84 };
 
@@ -85,14 +89,18 @@ void setup() {
   }
   esp_now_register_send_cb(onSent);
 
-  // 3) Add unencrypted peer (channel 0 lets ESP-NOW use current channel)
+  // 3) Add encrypted peer (channel 0 lets ESP-NOW use current channel)
+  esp_now_set_pmk((const uint8_t*)PMK);
+
   esp_now_peer_info_t p{};
+  uint8_t RECEIVER_MAC[6] = { 0xAC,0x67,0xB2,0x59,0x54,0x84 }; // receiver
   memcpy(p.peer_addr, RECEIVER_MAC, 6);
-  p.channel = 0;        // IMPORTANT: use current channel (already locked by AP)
-  p.encrypt = false;
+  p.channel = 0;       // use current channel (you locked it via AP join)
+  p.encrypt = true;
+  memcpy(p.lmk, LMK, 16);
+
   if (esp_now_add_peer(&p) != ESP_OK) {
-    Serial.println("Add peer failed");
-    return;
+    Serial.println("Sender: add encrypted peer failed");
   }
 
   Serial.printf("Sender STA MAC: %s | ch(Arduino)=%d\n", WiFi.macAddress().c_str(), WiFi.channel());
